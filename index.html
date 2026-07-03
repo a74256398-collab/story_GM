@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>故事屋 - 數位互動表達培訓平台</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Nunito', 'Noto Sans TC', 'sans-serif'],
+                    },
+                    colors: {
+                        story: {
+                            bg: '#FDF8F5',       
+                            orange: '#F08A5D',   
+                            yellow: '#F9ED69',   
+                            brown: '#5C4A43',    
+                            light: '#FFFDF9',    
+                            spring: '#B8E0D2',   
+                            summer: '#F4978E',   
+                            autumn: '#F3B562',   
+                            winter: '#8CB8DA',   
+                        }
+                    },
+                    boxShadow: {
+                        'crayon': '4px 4px 0px 0px rgba(92, 74, 67, 0.1)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #FDF8F5;
+            color: #5C4A43;
+            background-image: radial-gradient(#F08A5D 0.5px, transparent 0.5px), radial-gradient(#F08A5D 0.5px, #FDF8F5 0.5px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            background-attachment: fixed;
+            background-blend-mode: color-burn;
+        }
+
+        .crayon-border {
+            border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+            border: 3px solid #5C4A43;
+        }
+        
+        .crayon-border-light {
+            border-radius: 15px 255px 15px 225px / 255px 15px 225px 15px;
+            border: 2px dashed #F08A5D;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .tab-active {
+            border-bottom: 4px solid #F08A5D;
+            color: #F08A5D;
+            font-weight: bold;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 新增：可愛的漂浮動畫，用於首頁背景元素 */
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        .floating-delayed {
+            animation: float 6s ease-in-out 3s infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        /* 新增：為 Q&A 區塊製作的對話泡泡小尾巴 */
+        .speech-tail::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 24px;
+            border-width: 12px 12px 0 0;
+            border-style: solid;
+            /* 顏色會在行內樣式中根據卡片背景動態設定 */
+        }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen text-story-brown">
+
+    <script>
+        const getPlaceholder = (name) => `這是一個關於「${name}」的奇妙故事，透過生動的情節與互動，引導孩子們探索未知，學習勇氣與智慧，是一堂充滿歡樂的課程。`;
+
+        const db = {
+            spring: [
+                "年來了", "我的媽媽", "盤古開天", "十二生肖", "拇指姑娘", "海螃蟹傳奇", 
+                "三隻小豬", "七隻小羊與大野狼", "醜小鴨", "大蘿蔔", "鴿子報恩", "手套", "老鼠相撲"
+            ],
+            summer: [
+                "愛國詩人─屈原", "鵲橋上的牛郎織女", "傑克與魔豆", "阿拉丁與神燈", "阿里巴巴與四十大盜", 
+                "勇敢的小裁縫", "三個罐子", "包公審石頭", "周處除三害", "鱷魚與胡狼", "國王的新衣", 
+                "東郭先生和大野狼", "猴蟹交戰"
+            ],
+            autumn: [
+                "我的老師", "我的爸爸", "嫦娥奔月", "費長房求仙記", "傑克與南瓜燈", "虎姑婆", 
+                "賣香屁", "宋定伯賣鬼記", "金鵝", "稻草富翁", "約翰的蘋果籽", "小黃鼠狼", "穿長靴的貓", "烏龜與妖怪"
+            ],
+            winter: [
+                "大紅鼻魯道夫", "睡美人", "長髮姑娘", "灰姑娘", "白雪公主", "野天鵝", "糖果屋", 
+                "人魚公主", "胡桃鉗與老鼠王", "布萊梅樂隊", "三隻熊", "畫眉嘴國王", "三個商人買三條貓腿", "霸道的禿鷹"
+            ]
+        };
+
+        const stories = [];
+        let globalId = 1;
+        const seasonNames = { spring: '春季', summer: '夏季', autumn: '秋季', winter: '冬季' };
+        
+        Object.keys(db).forEach(season => {
+            db[season].forEach((title, index) => {
+                stories.push({
+                    id: globalId++,
+                    season: season,
+                    seasonName: seasonNames[season],
+                    episode: index + 1,
+                    title: title,
+                    description: getPlaceholder(title),
+                    tags: ['教案', '操作指導', '練習題', '學習單']
+                });
+            });
+        });
+
+        const state = {
+            view: 'home', 
+            param: null,  
+            activeTab: 'tab1' 
+        };
+    </script>
+
+    <!-- Mobile Header -->
+    <header class="md:hidden fixed top-0 left-0 w-full bg-story-light border-b-4 border-story-orange z-40 flex items-center justify-between px-4 py-3 shadow-sm">
+        <div class="flex items-center gap-2">
+            <button onclick="toggleSidebar()" class="p-2 text-story-brown hover:bg-orange-100 rounded-md transition cursor-pointer">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
+            <span class="font-black text-lg text-story-brown cursor-pointer" onclick="navigate('home')">故事屋</span>
+        </div>
+        <button onclick="openSearchMobile()" class="p-2 text-story-orange hover:bg-orange-100 rounded-md transition cursor-pointer">
+            <i class="ph ph-magnifying-glass text-xl"></i>
+        </button>
+    </header>
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden fade-in" onclick="toggleSidebar()"></div>
+
+    <!-- 左側邊欄導覽 -->
+    <aside id="sidebar" class="fixed top-0 left-0 h-[100dvh] w-64 bg-story-light border-r-2 border-gray-200 shadow-2xl md:shadow-none z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 flex flex-col">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+            <div class="flex items-center cursor-pointer group" onclick="navigate('home')">
+                <i class="ph-fill ph-house-line text-3xl text-story-orange mr-2 group-hover:scale-110 transition-transform"></i>
+                <span class="font-black text-xl tracking-wider text-story-brown">故事屋</span>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-story-orange p-1">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+
+        <div class="p-4 border-b border-gray-100 bg-white">
+            <div class="relative">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="sidebarSearch" placeholder="搜尋故事名稱..." 
+                       class="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-story-orange focus:ring-1 focus:ring-story-orange text-sm transition bg-gray-50 focus:bg-white"
+                       onkeyup="handleSidebarSearch(event)">
+            </div>
+            <div id="sidebarSearchResults" class="mt-2 max-h-48 overflow-y-auto hidden bg-white border border-gray-200 rounded-lg shadow-sm z-50 relative"></div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
+            <button onclick="navigate('home')" class="w-full text-left px-4 py-3 rounded-xl font-bold text-story-brown hover:bg-orange-100 hover:text-story-orange transition flex items-center group cursor-pointer">
+                <i class="ph-fill ph-circles-four mr-3 text-xl text-gray-400 group-hover:text-story-orange transition-colors"></i> 資源總看板
+            </button>
+            
+            <div class="pt-4 pb-2 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center">
+                <div class="h-px bg-gray-200 flex-1 mr-2"></div>
+                各季故事分類
+                <div class="h-px bg-gray-200 flex-1 ml-2"></div>
+            </div>
+            
+            <button onclick="navigate('season', 'spring')" class="w-full text-left px-4 py-3 rounded-xl font-bold text-green-800 hover:bg-green-100 transition flex items-center group cursor-pointer border border-transparent hover:border-green-200">
+                <span class="mr-3 text-xl group-hover:scale-110 transition-transform">🌸</span> 第 1 季 (春)
+            </button>
+            <button onclick="navigate('season', 'summer')" class="w-full text-left px-4 py-3 rounded-xl font-bold text-teal-800 hover:bg-teal-100 transition flex items-center group cursor-pointer border border-transparent hover:border-teal-200">
+                <span class="mr-3 text-xl group-hover:scale-110 transition-transform">☀️</span> 第 2 季 (夏)
+            </button>
+            <button onclick="navigate('season', 'autumn')" class="w-full text-left px-4 py-3 rounded-xl font-bold text-orange-800 hover:bg-orange-100 transition flex items-center group cursor-pointer border border-transparent hover:border-orange-200">
+                <span class="mr-3 text-xl group-hover:scale-110 transition-transform">🍂</span> 第 3 季 (秋)
+            </button>
+            <button onclick="navigate('season', 'winter')" class="w-full text-left px-4 py-3 rounded-xl font-bold text-blue-800 hover:bg-blue-100 transition flex items-center group cursor-pointer border border-transparent hover:border-blue-200">
+                <span class="mr-3 text-xl group-hover:scale-110 transition-transform">❄️</span> 第 4 季 (冬)
+            </button>
+        </nav>
+        
+        <div class="p-4 border-t border-gray-100 bg-gray-50 text-xs text-gray-400 text-center font-medium">
+            數位互動表達培訓平台<br>內部專用資源 V2.0
+        </div>
+    </aside>
+
+    <!-- 
+        版面置中修復點：
+        利用 md:pl-64 將側邊欄的寬度化為 padding，
+        內部再使用 mx-auto 與 max-w-6xl 即可完美置中於剩餘空間！
+    -->
+    <div class="md:pl-64 flex flex-col min-h-screen w-full">
+        <main id="app-content" class="flex-grow pt-24 md:pt-10 px-4 sm:px-6 lg:px-10 pb-16 max-w-6xl w-full mx-auto transition-all duration-300">
+            <!-- 內容將由 JS 渲染 -->
+        </main>
+    </div>
+
+    <script>
+        const contentDiv = document.getElementById('app-content');
+        
+        function navigate(view, param = null) {
+            state.view = view;
+            state.param = param;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            render();
+            
+            const sidebar = document.getElementById('sidebar');
+            if (window.innerWidth < 768 && !sidebar.classList.contains('-translate-x-full')) {
+                toggleSidebar();
+            }
+            
+            const searchInput = document.getElementById('sidebarSearch');
+            const searchResults = document.getElementById('sidebarSearchResults');
+            if(searchInput) searchInput.value = '';
+            if(searchResults) searchResults.classList.add('hidden');
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function openSearchMobile() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                toggleSidebar();
+            }
+            setTimeout(() => { document.getElementById('sidebarSearch').focus(); }, 300);
+        }
+
+        function render() {
+            contentDiv.innerHTML = ''; 
+            if (state.view === 'home' || state.view === 'all-seasons') {
+                contentDiv.innerHTML = renderHome();
+            } else if (state.view === 'season') {
+                contentDiv.innerHTML = renderSeason(state.param);
+            } else if (state.view === 'story') {
+                contentDiv.innerHTML = renderStory(state.param);
+            }
+        }
+
+        // --- 全新設計的首頁 (資源總看板) ---
+        function renderHome() {
+            return `
+            <div class="fade-in space-y-12">
+                
+                <!-- Hero Section 主視覺區 (視覺化與動態升級) -->
+                <div class="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-orange-100 text-center relative overflow-hidden crayon-border mt-4">
+                    <!-- 可愛漂浮裝飾背景 -->
+                    <div class="absolute inset-0 pointer-events-none overflow-hidden">
+                        <i class="ph-fill ph-star absolute top-8 left-10 text-5xl text-story-yellow floating opacity-60"></i>
+                        <i class="ph-fill ph-cloud absolute top-16 right-12 text-7xl text-blue-200 floating-delayed opacity-50"></i>
+                        <i class="ph-fill ph-shooting-star absolute bottom-12 left-16 text-6xl text-story-orange floating opacity-40"></i>
+                        <i class="ph-fill ph-planet absolute bottom-10 right-20 text-5xl text-emerald-300 floating-delayed opacity-50"></i>
+                    </div>
+                    
+                    <div class="relative z-10">
+                        <div class="inline-flex items-center justify-center p-3 bg-orange-50 rounded-2xl mb-4 text-story-orange">
+                            <i class="ph-fill ph-magic-wand text-3xl"></i>
+                        </div>
+                        <h1 class="text-3xl md:text-5xl font-black text-story-brown mb-4 tracking-wide">故事屋</h1>
+                        <p class="text-lg md:text-xl font-bold text-gray-500 mb-10">數位互動表達培訓平台</p>
+                        
+                        <!-- 核心成效：視覺化卡片，取代生硬的數字條列式 -->
+                        <div class="max-w-4xl mx-auto mb-10">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                                <div class="bg-gradient-to-br from-orange-50 to-white p-5 rounded-2xl border border-orange-100 flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group cursor-default">
+                                    <div class="w-14 h-14 rounded-full bg-orange-200 text-orange-600 flex items-center justify-center text-3xl shrink-0 group-hover:scale-110 transition-transform"><i class="ph-fill ph-microphone-stage"></i></div>
+                                    <div>
+                                        <h4 class="font-black text-story-brown text-lg">開口發表的勇氣</h4>
+                                        <p class="text-xs text-gray-500 mt-1 font-medium">建立自信，敢於站在台上表達自我</p>
+                                    </div>
+                                </div>
+                                <div class="bg-gradient-to-br from-blue-50 to-white p-5 rounded-2xl border border-blue-100 flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group cursor-default">
+                                    <div class="w-14 h-14 rounded-full bg-blue-200 text-blue-600 flex items-center justify-center text-3xl shrink-0 group-hover:scale-110 transition-transform"><i class="ph-fill ph-puzzle-piece"></i></div>
+                                    <div>
+                                        <h4 class="font-black text-story-brown text-lg">空間與圖像邏輯</h4>
+                                        <p class="text-xs text-gray-500 mt-1 font-medium">藉由 APP 拖曳物件，鍛鍊大腦聯想</p>
+                                    </div>
+                                </div>
+                                <div class="bg-gradient-to-br from-emerald-50 to-white p-5 rounded-2xl border border-emerald-100 flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group cursor-default">
+                                    <div class="w-14 h-14 rounded-full bg-emerald-200 text-emerald-600 flex items-center justify-center text-3xl shrink-0 group-hover:scale-110 transition-transform"><i class="ph-fill ph-chat-teardrop-text"></i></div>
+                                    <div>
+                                        <h4 class="font-black text-story-brown text-lg">高階語言組織力</h4>
+                                        <p class="text-xs text-gray-500 mt-1 font-medium">看圖說故事，訓練靈活不生硬的思維</p>
+                                    </div>
+                                </div>
+                                <div class="bg-gradient-to-br from-pink-50 to-white p-5 rounded-2xl border border-pink-100 flex items-center gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-300 group cursor-default">
+                                    <div class="w-14 h-14 rounded-full bg-pink-200 text-pink-600 flex items-center justify-center text-3xl shrink-0 group-hover:scale-110 transition-transform"><i class="ph-fill ph-folder-star"></i></div>
+                                    <div>
+                                        <h4 class="font-black text-story-brown text-lg">專屬學習歷程</h4>
+                                        <p class="text-xs text-gray-500 mt-1 font-medium">畫作收錄故事資料夾，留下成長軌跡</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <button onclick="document.getElementById('season-board').scrollIntoView({behavior: 'smooth'})" class="w-full sm:w-auto px-8 py-4 bg-story-orange text-white font-black rounded-2xl hover:bg-orange-600 hover:scale-105 transition-all shadow-crayon flex items-center justify-center gap-2 text-lg">
+                                📚 瀏覽全部 54 集
+                            </button>
+                            <button onclick="document.getElementById('platform-architecture').scrollIntoView({behavior: 'smooth'})" class="w-full sm:w-auto px-8 py-4 bg-white text-story-brown border-2 border-story-brown font-black rounded-2xl hover:bg-orange-50 hover:scale-105 transition-all shadow-sm flex items-center justify-center gap-2 text-lg">
+                                📖 了解標準教案
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 區塊一：平台架構與四大執行方針 -->
+                <div id="platform-architecture" class="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-gray-100 scroll-mt-24">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-black text-story-brown flex items-center">
+                            <span class="w-1.5 h-6 bg-emerald-600 rounded-full mr-3"></span>
+                            平台架構與低年級執行方針
+                        </h2>
+                        <p class="mt-3 text-gray-500 text-sm leading-relaxed">
+                            本平台專為國小教師、共學領隊設計。全面整合「故事互動引導」與「數位發表流程」，提供每集故事對應的四大黃金教學件。教師可快速預覽、下載或直接輸出以下內容：
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        
+                        <!-- 卡片 1 (LP) -->
+                        <div class="bg-[#F8FBFA] rounded-2xl p-6 border-t-4 border-emerald-500 hover:shadow-md transition">
+                            <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+                                <i class="ph-fill ph-book-open"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-800 text-center mb-2">完整教案 (LP)</h3>
+                            <p class="text-xs text-gray-500 text-center leading-relaxed">包含15分鐘核心引導、15分鐘全功能發表與10分鐘圖像歸檔的標準課堂流程。</p>
+                        </div>
+
+                        <!-- 卡片 2 (TM) -->
+                        <div class="bg-[#F6F9FC] rounded-2xl p-6 border-t-4 border-blue-400 hover:shadow-md transition">
+                            <div class="w-12 h-12 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+                                <i class="ph-fill ph-graduation-cap"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-800 text-center mb-2">APP 操作指導 (TM)</h3>
+                            <p class="text-xs text-gray-500 text-center leading-relaxed">故事關鍵節點提示、重要物件拖曳建議與數位互動時機點解說，免去摸索時間。</p>
+                        </div>
+
+                        <!-- 卡片 3 (Q&A) -->
+                        <div class="bg-[#FEF8F3] rounded-2xl p-6 border-t-4 border-orange-400 hover:shadow-md transition">
+                            <div class="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+                                <i class="ph-fill ph-chat-centered-text"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-800 text-center mb-2">引導練習題 (Q&A)</h3>
+                            <p class="text-xs text-gray-500 text-center leading-relaxed">專屬提問口袋名單、邏輯推演照卡，學生詞窮或缺乏靈感時的最佳引導工具。</p>
+                        </div>
+
+                        <!-- 卡片 4 (WS) -->
+                        <div class="bg-[#F5F6F8] rounded-2xl p-6 border-t-4 border-gray-400 hover:shadow-md transition">
+                            <div class="w-12 h-12 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+                                <i class="ph-fill ph-file-text"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-800 text-center mb-2">學生學習單 (WS)</h3>
+                            <p class="text-xs text-gray-500 text-center leading-relaxed">大字體、注音友善符號，專屬 A4 畫紙格式設計，完美收錄並建立學期學習歷程。</p>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 區塊二：全四季 54 集完整資源管理大看板 (參考截圖設計) -->
+                <div id="season-board" class="scroll-mt-24">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-black text-story-brown flex items-center">
+                            <span class="w-1.5 h-6 bg-story-orange rounded-full mr-3"></span>
+                            全四季 54 集完整資源管理大看板
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        
+                        <!-- 春季卡片 -->
+                        <div class="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col hover:shadow-lg transition transform hover:-translate-y-1">
+                            <div class="h-3 bg-[#2D5A4C]"></div> <!-- 墨綠色頂部 -->
+                            <div class="p-6 pb-8 flex-grow flex flex-col items-center text-center">
+                                <div class="flex items-center justify-center mb-4 gap-2">
+                                    <span class="text-2xl drop-shadow-sm">🌸</span>
+                                    <span class="bg-[#2D5A4C] text-white text-xs font-bold px-3 py-1 rounded-full">第 1 季</span>
+                                </div>
+                                <h3 class="font-black text-gray-800 text-lg mb-2">春季經典童話篇</h3>
+                                <p class="text-sm text-gray-500 mb-5">萬物復甦 × 經典童話智慧</p>
+                                <div class="mt-auto bg-[#F0F5F3] text-[#2D5A4C] font-bold px-5 py-1.5 rounded-full text-sm">
+                                    13 集
+                                </div>
+                            </div>
+                            <button onclick="navigate('season', 'spring')" class="w-full bg-[#346656] text-white py-3.5 font-bold hover:bg-[#2D5A4C] transition flex justify-center items-center gap-1 group">
+                                查看全部集數 <i class="ph-bold ph-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                            </button>
+                        </div>
+
+                        <!-- 夏季卡片 -->
+                        <div class="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col hover:shadow-lg transition transform hover:-translate-y-1">
+                            <div class="h-3 bg-[#3B8B88]"></div> <!-- 藍綠色頂部 -->
+                            <div class="p-6 pb-8 flex-grow flex flex-col items-center text-center">
+                                <div class="flex items-center justify-center mb-4 gap-2">
+                                    <span class="text-2xl drop-shadow-sm">☀️</span>
+                                    <span class="bg-[#3B8B88] text-white text-xs font-bold px-3 py-1 rounded-full">第 2 季</span>
+                                </div>
+                                <h3 class="font-black text-gray-800 text-lg mb-2">夏季冒險傳說篇</h3>
+                                <p class="text-sm text-gray-500 mb-5">熱情奔放 × 奇幻傳說冒險</p>
+                                <div class="mt-auto bg-[#F0F8F8] text-[#3B8B88] font-bold px-5 py-1.5 rounded-full text-sm">
+                                    13 集
+                                </div>
+                            </div>
+                            <button onclick="navigate('season', 'summer')" class="w-full bg-[#429996] text-white py-3.5 font-bold hover:bg-[#3B8B88] transition flex justify-center items-center gap-1 group">
+                                查看全部集數 <i class="ph-bold ph-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                            </button>
+                        </div>
+
+                        <!-- 秋季卡片 -->
+                        <div class="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col hover:shadow-lg transition transform hover:-translate-y-1">
+                            <div class="h-3 bg-[#DE6B2E]"></div> <!-- 橘紅色頂部 -->
+                            <div class="p-6 pb-8 flex-grow flex flex-col items-center text-center">
+                                <div class="flex items-center justify-center mb-4 gap-2">
+                                    <span class="text-2xl drop-shadow-sm">🍂</span>
+                                    <span class="bg-[#DE6B2E] text-white text-xs font-bold px-3 py-1 rounded-full">第 3 季</span>
+                                </div>
+                                <h3 class="font-black text-gray-800 text-lg mb-2">秋季鄉野奇譚篇</h3>
+                                <p class="text-sm text-gray-500 mb-5">收穫感恩 × 機智鄉野故事</p>
+                                <div class="mt-auto bg-[#FDF3EE] text-[#DE6B2E] font-bold px-5 py-1.5 rounded-full text-sm">
+                                    14 集
+                                </div>
+                            </div>
+                            <button onclick="navigate('season', 'autumn')" class="w-full bg-[#EA7435] text-white py-3.5 font-bold hover:bg-[#DE6B2E] transition flex justify-center items-center gap-1 group">
+                                查看全部集數 <i class="ph-bold ph-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                            </button>
+                        </div>
+
+                        <!-- 冬季卡片 -->
+                        <div class="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col hover:shadow-lg transition transform hover:-translate-y-1">
+                            <div class="h-3 bg-[#3272B6]"></div> <!-- 藍色頂部 -->
+                            <div class="p-6 pb-8 flex-grow flex flex-col items-center text-center">
+                                <div class="flex items-center justify-center mb-4 gap-2">
+                                    <span class="text-2xl drop-shadow-sm">❄️</span>
+                                    <span class="bg-[#3272B6] text-white text-xs font-bold px-3 py-1 rounded-full">第 4 季</span>
+                                </div>
+                                <h3 class="font-black text-gray-800 text-lg mb-2">冬季公主魔法篇</h3>
+                                <p class="text-sm text-gray-500 mb-5">白雪世界 × 奇蹟公主童話</p>
+                                <div class="mt-auto bg-[#F1F6FB] text-[#3272B6] font-bold px-5 py-1.5 rounded-full text-sm">
+                                    14 集
+                                </div>
+                            </div>
+                            <button onclick="navigate('season', 'winter')" class="w-full bg-[#3980CC] text-white py-3.5 font-bold hover:bg-[#3272B6] transition flex justify-center items-center gap-1 group">
+                                查看全部集數 <i class="ph-bold ph-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+            `;
+        }
+
+        // --- View: Season List ---
+        function renderSeason(seasonKey) {
+            const seasonData = stories.filter(s => s.season === seasonKey);
+            const seasonName = seasonNames[seasonKey];
+            
+            const colors = {
+                spring: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300', icon: '🌸' },
+                summer: { bg: 'bg-teal-100', text: 'text-teal-800', border: 'border-teal-300', icon: '☀️' },
+                autumn: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300', icon: '🍂' },
+                winter: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300', icon: '❄️' }
+            };
+            const theme = colors[seasonKey];
+
+            let html = `
+            <div class="fade-in max-w-5xl mx-auto">
+                <nav class="flex text-sm text-gray-500 mb-4 font-bold">
+                    <button onclick="navigate('home')" class="hover:text-story-orange transition">資源總看板</button>
+                    <span class="mx-2">/</span>
+                    <span class="text-story-brown">${seasonName}</span>
+                </nav>
+
+                <div class="${theme.bg} ${theme.border} border-2 rounded-2xl p-8 mb-8 text-center crayon-border shadow-sm relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 text-7xl opacity-20">${theme.icon}</div>
+                    <h2 class="text-3xl font-black ${theme.text} flex items-center justify-center relative z-10">
+                        ${theme.icon} ${seasonName}故事屋
+                    </h2>
+                    <p class="mt-2 text-sm font-bold opacity-80 ${theme.text} relative z-10">共收錄 ${seasonData.length} 集精選故事</p>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden crayon-border-light">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-200 text-gray-600">
+                                    <th class="p-4 font-bold text-center w-16 whitespace-nowrap">集數</th>
+                                    <th class="p-4 font-bold w-1/4 whitespace-nowrap">故事名稱</th>
+                                    <th class="p-4 font-bold hidden sm:table-cell">故事簡介 (預覽)</th>
+                                    <th class="p-4 font-bold w-1/3 whitespace-nowrap">資源配置</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+            `;
+
+            seasonData.forEach(story => {
+                const tagsHtml = story.tags.map(tag => 
+                    `<span class="inline-flex items-center px-2 py-1 bg-gray-50 text-gray-600 text-[11px] font-bold rounded border border-gray-200 mr-1 mb-1 whitespace-nowrap">
+                        <i class="ph-bold ph-check text-story-orange mr-1"></i>${tag}
+                    </span>`
+                ).join('');
+
+                html += `
+                                <tr class="hover:bg-orange-50 cursor-pointer transition-colors group" onclick="navigate('story', ${story.id})">
+                                    <td class="p-4 text-center font-bold text-gray-400 group-hover:text-story-orange">
+                                        E${String(story.episode).padStart(2, '0')}
+                                    </td>
+                                    <td class="p-4 font-black text-story-brown text-lg">
+                                        ${story.title}
+                                    </td>
+                                    <td class="p-4 text-sm text-gray-500 hidden sm:table-cell pr-8 leading-relaxed">
+                                        ${story.description}
+                                    </td>
+                                    <td class="p-4">
+                                        <div class="flex flex-wrap">${tagsHtml}</div>
+                                    </td>
+                                </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            `;
+            return html;
+        }
+
+        // --- View: Story Detail ---
+        function renderStory(storyId) {
+            const story = stories.find(s => s.id === storyId);
+            if(!story) return `<div class="text-center p-10">找不到該故事</div>`;
+
+            const tabContent = getTabContent(story, state.activeTab);
+
+            return `
+            <div class="fade-in max-w-4xl mx-auto">
+                <nav class="flex text-sm text-gray-500 mb-6 font-bold flex-wrap">
+                    <button onclick="navigate('home')" class="hover:text-story-orange transition">資源總看板</button>
+                    <span class="mx-2">/</span>
+                    <button onclick="navigate('season', '${story.season}')" class="hover:text-story-orange transition">${story.seasonName}</button>
+                    <span class="mx-2">/</span>
+                    <span class="text-story-brown">${story.title}</span>
+                </nav>
+
+                <div class="bg-white p-6 sm:p-8 rounded-2xl crayon-border shadow-sm mb-8 flex flex-col md:flex-row gap-6 items-center md:items-start">
+                    <div class="w-28 h-28 md:w-40 md:h-40 flex-shrink-0 bg-orange-50 rounded-xl border-2 border-dashed border-orange-200 flex items-center justify-center relative overflow-hidden">
+                        <i class="ph-fill ph-book-open-text text-5xl text-story-orange opacity-40"></i>
+                        <div class="absolute bottom-0 w-full bg-story-orange text-white text-center text-[10px] py-1 font-bold tracking-widest">
+                            EP ${story.episode}
+                        </div>
+                    </div>
+
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-3 mb-2 flex-wrap">
+                            <span class="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-black rounded-full border border-gray-200">
+                                ${story.seasonName}
+                            </span>
+                            <h1 class="text-2xl md:text-3xl font-black text-story-brown">${story.title}</h1>
+                        </div>
+                        <p class="text-gray-500 text-sm md:text-base mt-4 leading-relaxed bg-gray-50 p-4 rounded-lg border-l-4 border-story-orange">
+                            <strong>教學簡介：</strong><br>${story.description}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="border-b-2 border-gray-200 mb-6 flex overflow-x-auto no-scrollbar gap-2">
+                    <button onclick="switchTab('tab1', ${story.id})" class="px-5 py-3 font-bold text-gray-500 hover:text-story-orange whitespace-nowrap transition-colors rounded-t-lg ${state.activeTab === 'tab1' ? 'tab-active bg-orange-50' : ''}">
+                        <i class="ph-fill ph-chalkboard-teacher mr-1"></i> 完整教案 (LP)
+                    </button>
+                    <button onclick="switchTab('tab2', ${story.id})" class="px-5 py-3 font-bold text-gray-500 hover:text-story-orange whitespace-nowrap transition-colors rounded-t-lg ${state.activeTab === 'tab2' ? 'tab-active bg-orange-50' : ''}">
+                        <i class="ph-fill ph-graduation-cap mr-1"></i> APP 指導 (TM)
+                    </button>
+                    <button onclick="switchTab('tab3', ${story.id})" class="px-5 py-3 font-bold text-gray-500 hover:text-story-orange whitespace-nowrap transition-colors rounded-t-lg ${state.activeTab === 'tab3' ? 'tab-active bg-orange-50' : ''}">
+                        <i class="ph-fill ph-chat-centered-text mr-1"></i> 練習題 (Q&A)
+                    </button>
+                    <button onclick="switchTab('tab4', ${story.id})" class="px-5 py-3 font-bold text-gray-500 hover:text-story-orange whitespace-nowrap transition-colors rounded-t-lg ${state.activeTab === 'tab4' ? 'tab-active bg-orange-50' : ''}">
+                        <i class="ph-fill ph-file-text mr-1"></i> 學習單 (WS)
+                    </button>
+                </div>
+
+                <div id="tab-content-area" class="fade-in pb-12">
+                    ${tabContent}
+                </div>
+            </div>
+            `;
+        }
+
+        function switchTab(tabId, storyId) {
+            state.activeTab = tabId;
+            render(); 
+        }
+
+        function getTabContent(story, tabId) {
+            if (tabId === 'tab1') {
+                return `
+                    <div class="flex items-center gap-2 mb-6">
+                        <i class="ph-fill ph-map-trifold text-2xl text-story-brown"></i>
+                        <h3 class="text-xl font-black text-story-brown">40分鐘闖關路線圖</h3>
+                    </div>
+                    
+                    <!-- 視覺化時間軸 (取代舊的堆疊方塊) -->
+                    <div class="relative pl-6 md:pl-10 space-y-8">
+                        <!-- 連接虛線 -->
+                        <div class="absolute left-[19px] md:left-[35px] top-6 bottom-6 w-1 border-l-4 border-dashed border-gray-200"></div>
+
+                        <!-- 節點 1 -->
+                        <div class="relative group">
+                            <div class="absolute -left-[30px] md:-left-[46px] top-1/2 -translate-y-1/2 w-12 h-12 bg-white border-4 border-emerald-400 text-emerald-500 rounded-full flex items-center justify-center shadow-sm z-10 group-hover:scale-110 transition-transform"><i class="ph-bold ph-chalkboard-teacher text-xl"></i></div>
+                            <div class="bg-gradient-to-r from-emerald-50 to-white p-6 rounded-2xl border border-emerald-100 shadow-sm ml-4 relative overflow-hidden crayon-border-light">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="bg-emerald-500 text-white font-black py-1 px-3 rounded-full text-xs shadow-sm">00 - 15 分鐘</span>
+                                    <h4 class="font-black text-emerald-900 text-lg">老師示範引導</h4>
+                                </div>
+                                <div class="text-emerald-800 text-sm mt-3 space-y-2 font-medium">
+                                    <p class="flex items-start gap-2"><i class="ph-fill ph-play-circle text-lg mt-0.5 shrink-0 text-emerald-400"></i> 開啟大螢幕，選擇《${story.title}》進行「自動朗讀」。</p>
+                                    <p class="flex items-start gap-2"><i class="ph-fill ph-ear text-lg mt-0.5 shrink-0 text-emerald-400"></i> 帶領全班翻頁一次，建立故事基礎輪廓 (此階段學生專注聆聽)。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 節點 2 -->
+                        <div class="relative group">
+                            <div class="absolute -left-[30px] md:-left-[46px] top-1/2 -translate-y-1/2 w-12 h-12 bg-white border-4 border-blue-400 text-blue-500 rounded-full flex items-center justify-center shadow-sm z-10 group-hover:scale-110 transition-transform"><i class="ph-bold ph-users-three text-xl"></i></div>
+                            <div class="bg-gradient-to-r from-blue-50 to-white p-6 rounded-2xl border border-blue-100 shadow-sm ml-4 relative overflow-hidden crayon-border-light">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="bg-blue-500 text-white font-black py-1 px-3 rounded-full text-xs shadow-sm">15 - 30 分鐘</span>
+                                    <h4 class="font-black text-blue-900 text-lg">學生全功能發表</h4>
+                                </div>
+                                <div class="text-blue-800 text-sm mt-3 space-y-2 font-medium">
+                                    <p class="flex items-start gap-2"><i class="ph-fill ph-hand-pointing text-lg mt-0.5 shrink-0 text-blue-400"></i> 邀請學生輪流上台，<strong>自行切換場景</strong>並<strong>拖曳物件</strong>。</p>
+                                    <p class="flex items-start gap-2"><i class="ph-fill ph-chat-centered-text text-lg mt-0.5 shrink-0 text-blue-400"></i> 結合空間邏輯，開口說出對應劇情，培養表達流暢度。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 節點 3 -->
+                        <div class="relative group">
+                            <div class="absolute -left-[30px] md:-left-[46px] top-1/2 -translate-y-1/2 w-12 h-12 bg-white border-4 border-orange-400 text-orange-500 rounded-full flex items-center justify-center shadow-sm z-10 group-hover:scale-110 transition-transform"><i class="ph-bold ph-palette text-xl"></i></div>
+                            <div class="bg-gradient-to-r from-orange-50 to-white p-6 rounded-2xl border border-orange-100 shadow-sm ml-4 relative overflow-hidden crayon-border-light">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="bg-orange-500 text-white font-black py-1 px-3 rounded-full text-xs shadow-sm">30 - 40 分鐘</span>
+                                    <h4 class="font-black text-orange-900 text-lg">圖像沉澱與歸檔</h4>
+                                </div>
+                                <div class="text-orange-800 text-sm mt-3 space-y-2 font-medium">
+                                    <p class="flex items-start gap-2"><i class="ph-fill ph-pencil-simple text-lg mt-0.5 shrink-0 text-orange-400"></i> 發放專屬畫紙，畫下最喜歡的場景或改寫結局。</p>
+                                    <p class="flex items-start gap-2"><i class="ph-fill ph-folder-open text-lg mt-0.5 shrink-0 text-orange-400"></i> 完成後收錄進個人故事資料夾，建立期末成果展示。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (tabId === 'tab2') {
+                return `
+                    <div class="flex items-center gap-2 mb-6">
+                        <i class="ph-fill ph-lightbulb text-2xl text-story-brown"></i>
+                        <h3 class="text-xl font-black text-story-brown">課堂小提示 (TM)</h3>
+                    </div>
+                    
+                    <p class="text-gray-500 text-sm mb-6 font-bold">備課時請留意《${story.title}》的以下操作秘訣：</p>
+                    
+                    <!-- 視覺化便利貼卡片 (取代生硬的 ul, li 列表) -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div class="bg-[#F8FBFA] p-6 rounded-3xl border border-emerald-100 relative overflow-hidden shadow-sm hover:-translate-y-1 transition-transform cursor-default">
+                            <i class="ph-fill ph-faders absolute -bottom-4 -right-4 text-7xl text-emerald-100/50"></i>
+                            <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xl mb-4 relative z-10"><i class="ph-bold ph-speaker-high"></i></div>
+                            <h4 class="font-black text-gray-800 mb-2 relative z-10">課前預設</h4>
+                            <p class="text-sm text-gray-600 relative z-10 font-medium">進入故事前，請先確認「背景音量」與「字幕開關」是否符合今日班級的需求。</p>
+                        </div>
+                        
+                        <div class="bg-[#F6F9FC] p-6 rounded-3xl border border-blue-100 relative overflow-hidden shadow-sm hover:-translate-y-1 transition-transform cursor-default">
+                            <i class="ph-fill ph-arrows-out-line-horizontal absolute -bottom-4 -right-4 text-7xl text-blue-100/50"></i>
+                            <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xl mb-4 relative z-10"><i class="ph-bold ph-skip-forward"></i></div>
+                            <h4 class="font-black text-gray-800 mb-2 relative z-10">場景切換</h4>
+                            <p class="text-sm text-gray-600 relative z-10 font-medium">引導學生在適當時機點擊「下一幕」，藉此訓練他們對劇情發展的預測習慣。</p>
+                        </div>
+                        
+                        <div class="bg-[#FEF8F3] p-6 rounded-3xl border border-orange-100 relative overflow-hidden shadow-sm hover:-translate-y-1 transition-transform cursor-default">
+                            <i class="ph-fill ph-shooting-star absolute -bottom-4 -right-4 text-7xl text-orange-100/50"></i>
+                            <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xl mb-4 relative z-10"><i class="ph-bold ph-magic-wand"></i></div>
+                            <h4 class="font-black text-gray-800 mb-2 relative z-10">尋找彩蛋</h4>
+                            <p class="text-sm text-gray-600 relative z-10 font-medium">請學生尋找畫面中的「發光點」，將主角拖曳過去即可觸發特殊的互動動畫！</p>
+                        </div>
+                    </div>
+                `;
+            } else if (tabId === 'tab3') {
+                return `
+                    <div class="flex items-center gap-2 mb-6">
+                        <i class="ph-fill ph-chat-circle-dots text-2xl text-story-brown"></i>
+                        <h3 class="text-xl font-black text-story-brown">老師的救援口袋 (Q&A)</h3>
+                    </div>
+                    
+                    <p class="text-gray-500 text-sm mb-6 font-bold">當台上學生詞窮或缺乏靈感時，試試這些引導問句：</p>
+                    
+                    <!-- 對話泡泡設計 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8 mt-4">
+                        <!-- Bubble 1 -->
+                        <div class="relative">
+                            <div class="absolute -left-2 -top-3 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-lg z-10 border-2 border-white shadow-sm"><i class="ph-bold ph-eye"></i></div>
+                            <div class="bg-[#EFF6FF] p-5 rounded-2xl shadow-sm speech-tail relative" style="border-color: #EFF6FF;">
+                                <span class="inline-block px-2 py-1 bg-blue-200 text-blue-800 text-[10px] font-black rounded mb-2">觀察引導</span>
+                                <p class="font-bold text-gray-700 text-sm leading-relaxed">「你看畫面裡的主角現在是什麼表情？猜猜他為什麼會這樣？」</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Bubble 2 -->
+                        <div class="relative">
+                            <div class="absolute -left-2 -top-3 w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-lg z-10 border-2 border-white shadow-sm"><i class="ph-bold ph-brain"></i></div>
+                            <div class="bg-[#ECFDF5] p-5 rounded-2xl shadow-sm speech-tail relative" style="border-color: #ECFDF5;">
+                                <span class="inline-block px-2 py-1 bg-emerald-200 text-emerald-800 text-[10px] font-black rounded mb-2">邏輯推演</span>
+                                <p class="font-bold text-gray-700 text-sm leading-relaxed">「如果他不使用這個工具，你覺得接下來會發生什麼事？」</p>
+                            </div>
+                        </div>
+
+                        <!-- Bubble 3 -->
+                        <div class="relative">
+                            <div class="absolute -left-2 -top-3 w-8 h-8 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center text-lg z-10 border-2 border-white shadow-sm"><i class="ph-bold ph-heart"></i></div>
+                            <div class="bg-[#FDF2F8] p-5 rounded-2xl shadow-sm speech-tail relative" style="border-color: #FDF2F8;">
+                                <span class="inline-block px-2 py-1 bg-pink-200 text-pink-800 text-[10px] font-black rounded mb-2">同理心培養</span>
+                                <p class="font-bold text-gray-700 text-sm leading-relaxed">「如果你是故事裡的他，遇到這個困難，你會怎麼解決？」</p>
+                            </div>
+                        </div>
+
+                        <!-- Bubble 4 -->
+                        <div class="relative">
+                            <div class="absolute -left-2 -top-3 w-8 h-8 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-lg z-10 border-2 border-white shadow-sm"><i class="ph-bold ph-lightbulb"></i></div>
+                            <div class="bg-[#FFF7ED] p-5 rounded-2xl shadow-sm speech-tail relative" style="border-color: #FFF7ED;">
+                                <span class="inline-block px-2 py-1 bg-orange-200 text-orange-800 text-[10px] font-black rounded mb-2">創意激發</span>
+                                <p class="font-bold text-gray-700 text-sm leading-relaxed">「除了畫面上出現的工具，你覺得還有什麼東西可以幫忙他？」</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (tabId === 'tab4') {
+                return `
+                    <div class="flex items-center gap-2 mb-6">
+                        <i class="ph-fill ph-printer text-2xl text-story-brown"></i>
+                        <h3 class="text-xl font-black text-story-brown">列印學習單 (WS)</h3>
+                    </div>
+                    
+                    <div class="bg-gradient-to-b from-gray-50 to-white p-10 rounded-3xl border-2 border-dashed border-gray-300 text-center flex flex-col items-center justify-center relative overflow-hidden group">
+                        
+                        <div class="absolute -right-8 -top-8 text-9xl text-gray-100 rotate-12 group-hover:rotate-6 transition-transform duration-500"><i class="ph-fill ph-file-pdf"></i></div>
+                        
+                        <div class="w-20 h-20 bg-white shadow-sm text-red-500 rounded-full flex items-center justify-center text-4xl mb-6 relative z-10">
+                            <i class="ph-fill ph-file-pdf"></i>
+                        </div>
+                        
+                        <h4 class="text-2xl font-black text-gray-800 mb-3 relative z-10">《${story.title}》專屬畫紙</h4>
+                        
+                        <div class="bg-white px-4 py-2 rounded-lg border border-gray-100 shadow-sm mb-8 relative z-10 flex gap-4 text-xs font-bold text-gray-500 flex-wrap justify-center">
+                            <span class="flex items-center gap-1"><i class="ph-bold ph-check-circle text-green-500"></i> A4 滿版規格</span>
+                            <span class="flex items-center gap-1"><i class="ph-bold ph-check-circle text-green-500"></i> 注音友善字體</span>
+                            <span class="flex items-center gap-1"><i class="ph-bold ph-check-circle text-green-500"></i> 專屬故事圖框</span>
+                        </div>
+                        
+                        <button class="px-8 py-4 bg-story-brown text-white font-black rounded-2xl hover:bg-gray-800 hover:scale-105 transition-all shadow-md flex items-center gap-3 relative z-10 text-lg" onclick="alert('檔案下載模擬：${story.title}_學習單(WS).pdf')">
+                            <i class="ph-bold ph-download-simple text-2xl"></i> 下載 PDF 學習單
+                        </button>
+                    </div>
+                `;
+            }
+            return '';
+        }
+
+        function handleSidebarSearch(event) {
+            const query = event.target.value.trim().toLowerCase();
+            const searchResults = document.getElementById('sidebarSearchResults');
+            
+            if (query.length === 0) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+
+            const results = stories.filter(s => s.title.toLowerCase().includes(query));
+            
+            if (results.length > 0) {
+                let html = '<ul class="divide-y divide-gray-100">';
+                results.forEach(s => {
+                    html += `
+                        <li class="p-3 hover:bg-orange-50 cursor-pointer flex flex-col group" onclick="navigate('story', ${s.id})">
+                            <span class="font-bold text-sm text-story-brown group-hover:text-story-orange transition-colors">${s.title}</span>
+                            <span class="text-[11px] text-gray-400 mt-1 flex items-center font-bold">
+                                <i class="ph-fill ph-book-open mr-1"></i> ${s.seasonName} · 第 ${s.episode} 集
+                            </span>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                searchResults.innerHTML = html;
+                searchResults.classList.remove('hidden');
+            } else {
+                searchResults.innerHTML = '<div class="p-4 text-sm text-gray-500 text-center flex flex-col items-center"><i class="ph ph-mask-sad text-2xl mb-1 text-gray-300"></i>找不到相關故事</div>';
+                searchResults.classList.remove('hidden');
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const searchInput = document.getElementById('sidebarSearch');
+            const searchResults = document.getElementById('sidebarSearchResults');
+            if (searchInput && searchResults && !searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.classList.add('hidden');
+            }
+        });
+
+        window.onload = () => {
+            render();
+            
+            window.alert = function(message) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm fade-in px-4';
+                modal.innerHTML = `
+                    <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full text-center border-t-4 border-story-orange">
+                        <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+                            <i class="ph-bold ph-check"></i>
+                        </div>
+                        <h3 class="text-lg font-black text-gray-800 mb-2">系統通知</h3>
+                        <p class="text-gray-500 text-sm mb-6">${message}</p>
+                        <button onclick="this.closest('.fixed').remove()" class="px-6 py-2.5 bg-story-orange text-white font-bold rounded-lg w-full hover:bg-orange-600 transition">
+                            我知道了
+                        </button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            };
+        };
+
+    </script>
+</body>
+</html>
